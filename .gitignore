@@ -1,0 +1,5 @@
+# dont upload data
+data/*
+
+# dont track ds store
+*.DS_Store
