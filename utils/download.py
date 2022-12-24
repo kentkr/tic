@@ -7,7 +7,7 @@ import zipfile
 import io
 import gzip
 import math
-from alive_progress import alive_bar
+from tqdm import tqdm
 
 def download_from_urls(url_series, folder_path):
     # original url length
@@ -18,7 +18,6 @@ def download_from_urls(url_series, folder_path):
     print('Dropped {} duplicates'.format(orig_len-new_len))
     # for each url
     for url_index, url in url_series.iteritems():
-        print(url_index)
         # if url is null skp
         if pd.isnull(url):
             print('skipping')
@@ -43,44 +42,24 @@ def download_from_urls(url_series, folder_path):
         file_size = convert_file_size(content_size)
         print('File size: {}'.format(file_size))
 
-        # get response bytes
-        #byte = response.read()
-        chunksize = 29999104 # 30MB -- slightly more than what my wifi can handle 
-        byte = b''
-
-        # context for download time bar
-        with alive_bar(manual = True) as bar:
-            # persistent while loop
-            while True:
-                # read only a set chunk size
-                chunk = response.read(chunksize)
-                # if no chunk received break
-                if not chunk:
-                    break
-                # append chunk to byte object
-                byte += chunk
-                # percentage bar downloaded
-                bar(len(byte)/content_size)
-
-        # depending on compression get then write file
         print('opening file')
         print(extension)
         if extension == '.gz':
             removed_extension= os.path.splitext(file_name)[0]
             added_prefix = '{}_'.format(url_index) + removed_extension
-            extract_gzip(byte, added_prefix, folder_path)    
+            extract_gzip(response, added_prefix, folder_path, file_size)    
 
         elif extension == '.zip':
-            extract_zip(byte, folder_path, url_index)
+            extract_zip(response, folder_path, url_index)
 
         # if json
         else:
             added_prefix = '{}_'.format(url_index) + file_name
-            extract_json(byte, added_prefix, folder_path)
+            extract_json(response, added_prefix, folder_path)
 
-def extract_json(byte, file_name, folder_path):
+def extract_json(response, file_name, folder_path):
     # convert bytes to json
-    jsoned = json.loads(byte)
+    jsoned = json.loads(response.read())
     # get file path
     write_path = os.path.join(folder_path, file_name)
     # open file
@@ -90,23 +69,20 @@ def extract_json(byte, file_name, folder_path):
                 out_file,
                 indent = 4)
 
-def extract_gzip(byte, file_name, folder_path):
-    print('decompressing')
-    # get and uncompress file
-    uncompressed = gzip.open(io.BytesIO(byte))
-    print('reading compression as json')
-    jsoned = json.loads(uncompressed.read())
-    write_path = os.path.join(folder_path, file_name)
-    print('dumping json')
-    with open(write_path, 'w') as out_file:
-        json.dump(jsoned,
-                out_file,
-                indent = 4)
+def extract_gzip(response, file_name, folder_path, file_size):
+    # get file path
+    file_path = os.path.join(folder_path, file_name)
+    # read object in read mode
+    file = gzip.GzipFile(fileobj = response, mode = 'r')
+    # stream and decompress each line of the file
+    with open(file_path, 'w') as f:
+        for line in tqdm(file):
+            f.write(line.decode())
 
 # fun to unzip files
-def extract_zip(byte, folder_path, url_index):
+def extract_zip(response, folder_path, url_index):
     # convert from bytes to unzipped file
-    unzipped = zipfile.ZipFile(io.BytesIO(byte))
+    unzipped = zipfile.ZipFile(io.BytesIO(response.read()))
     file_information = unzipped.infolist()
     # for each file in unzipped
     for file in file_information:

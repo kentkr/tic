@@ -16,7 +16,7 @@ with open('/Users/kylekent/Library/CloudStorage/Dropbox/tic/data/cigna/expanded_
 # extract allowed amount files
 folder_path = '/Users/kylekent/Library/CloudStorage/Dropbox/tic/data/cigna/in_network_files'
 #url_series = index_file['reporting_structure.in_network_files.location'][list(range(0, 100))]
-url_series = index_file['reporting_structure.in_network_files.location'][range(15, 16)]
+url_series = index_file['reporting_structure.in_network_files.location'][range(0, 100)]
 print(url_series)
 
 download_from_urls(url_series, folder_path)
