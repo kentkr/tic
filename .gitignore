@@ -3,3 +3,6 @@ data/*
 
 # dont track ds store
 *.DS_Store
+
+# dont track scratch scripts
+scripts/scratch.py
